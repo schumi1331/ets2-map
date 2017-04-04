@@ -7,6 +7,7 @@ namespace Ets2Map
         public bool IsHighway { get; private set; }
         public bool IsLocal { get; private set; }
         public bool IsExpress { get; private set; }
+        public bool IsNoVehicles { get; private set; }
         public string LookID { get; private set; }
         private Ets2Mapper Mapper;
 
@@ -25,9 +26,19 @@ namespace Ets2Map
             Mapper = mapper;
 
             var roadLookData = mapper.LUTSIIFolder + "-road_look.sii";
-            var fileData = File.ReadAllLines(roadLookData);
+            var roadLookTemplateData = mapper.LUTSIIFolder + "-road_look.template.sii";
+            var roadLookTemplateFrData = mapper.LUTSIIFolder + "-road_look.template.dlc_fr.sii";
 
-            var found = false;
+            if (!FindInFiles(roadLookData))
+                if (!FindInFiles(roadLookTemplateData))
+                    FindInFiles(roadLookTemplateFrData);
+        }
+
+        private bool FindInFiles(string path)
+        {
+            bool found = false;
+            if (!File.Exists(path)) return found;
+            var fileData = File.ReadLines(path);
             foreach (var k in fileData)
             {
                 if (!found)
@@ -43,7 +54,7 @@ namespace Ets2Map
                     if (k.Contains(":"))
                     {
                         var key = k;
-                        var data = key.Substring(key.IndexOf(":")+1).Trim();
+                        var data = key.Substring(key.IndexOf(":") + 1).Trim();
                         key = key.Substring(0, key.IndexOf(":")).Trim();
 
                         switch (key)
@@ -71,12 +82,16 @@ namespace Ets2Map
                                 LanesLeft++;
                                 IsLocal = (data == "traffic_lane.road.local");
                                 IsExpress = (data == "traffic_lane.road.expressway");
-                                IsHighway = (data == "traffic_lane.road.motorway");
-
+                                IsHighway = (data == "traffic_lane.road.motorway" || data == "traffic_lane.road.motorway.low_density");
+                                IsNoVehicles = (data == "traffic_lane.no_vehicles");
                                 break;
 
                             case "lanes_right[]":
                                 LanesRight++;
+                                IsLocal = (data == "traffic_lane.road.local");
+                                IsExpress = (data == "traffic_lane.road.expressway");
+                                IsHighway = (data == "traffic_lane.road.motorway" || data == "traffic_lane.road.motorway.low_density");
+                                IsNoVehicles = (data == "traffic_lane.no_vehicles");
                                 break;
                         }
                     }
@@ -84,6 +99,7 @@ namespace Ets2Map
                         break;
                 }
             }
+            return found;
         }
 
         public float GetTotalWidth()

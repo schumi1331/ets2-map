@@ -105,10 +105,54 @@ namespace Ets2Map
             throw new NotImplementedException();
         }
 
+        private Dictionary<string, string> ParsePrefabSiiFile(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+            var siiLines = File.ReadAllLines(path);
+            Dictionary<string, string> prefab2file = new Dictionary<string, string>();
+            var prefab = string.Empty;
+            var file = string.Empty;
+            foreach (var k in siiLines)
+            {
+                if (k.Trim() == "}")
+                {
+                    if (prefab != string.Empty && file != string.Empty)
+                    {
+                        prefab2file.Add(prefab, file);
+                    }
+
+                    prefab = string.Empty;
+                    file = string.Empty;
+                }
+
+                if (k.StartsWith("prefab_model"))
+                {
+                    var d = k.Split(":".ToCharArray()).Select(x => x.Trim()).ToArray();
+                    if (d[1].Length > 3)
+                    {
+                        prefab = d[1].Substring(0, d[1].Length - 1).Trim();
+                    }
+                }
+
+                if (k.Contains("prefab_desc"))
+                {
+                    var d = k.Split("\"".ToCharArray());
+                    file = d[1].Trim();
+                }
+
+            }
+            return prefab2file;
+        }
+
         private void LoadLUT()
         {
             // PREFABS
             var prefabSii = LUTSIIFolder + "-prefab.sii";
+            var prefabNorthSii = LUTSIIFolder + "-prefab.dlc_north.sii";
+            var prefabFrSii = LUTSIIFolder + "-prefab.dlc_fr.sii";
             var prefabCsv = LUTCSVFolder + "-prefab.csv";
 
             if (File.Exists(prefabSii) && File.Exists(prefabCsv))
@@ -119,7 +163,7 @@ namespace Ets2Map
                 var csvLines = File.ReadAllLines(prefabCsv);
                 foreach (var k in csvLines)
                 {
-                    var d = k.Split(",".ToCharArray());
+                    var d = k.Split(";".ToCharArray());
                     int idx;
 
                     if (int.TryParse(d[2], NumberStyles.HexNumber, null, out idx))
@@ -129,39 +173,9 @@ namespace Ets2Map
                     }
                 }
 
-                var siiLines = File.ReadAllLines(prefabSii);
-
-                var prefab = string.Empty;
-                var file = string.Empty;
-                foreach (var k in siiLines)
-                {
-                    if (k.Trim() == "}")
-                    {
-                        if (prefab != string.Empty && file != string.Empty)
-                        {
-                            prefab2file.Add(prefab, file);
-                        }
-
-                        prefab = string.Empty;
-                        file = string.Empty;
-                    }
-
-                    if (k.StartsWith("prefab_model"))
-                    {
-                        var d = k.Split(":".ToCharArray()).Select(x => x.Trim()).ToArray();
-                        if (d[1].Length > 3)
-                        {
-                            prefab = d[1].Substring(0, d[1].Length - 1).Trim();
-                        }
-                    }
-
-                    if (k.Contains("prefab_desc"))
-                    {
-                        var d = k.Split("\"".ToCharArray());
-                        file = d[1].Trim();
-                    }
-
-                }
+                ParsePrefabSiiFile(prefabSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
+                ParsePrefabSiiFile(prefabNorthSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
+                ParsePrefabSiiFile(prefabFrSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
 
                 // Link all prefabs
                 foreach (var id2fab in idx2prefab)
@@ -194,9 +208,9 @@ namespace Ets2Map
             {
                 CitiesLookup = File.ReadAllLines(LUTCSVFolder + "-cities.csv").Select(x =>
                 {
-                    var d = x.Split(",".ToCharArray());
-                    var id = ulong.Parse(d[0], NumberStyles.HexNumber);
-                    var city = d[1];
+                    var d = x.Split(";".ToCharArray());
+                    var id = ulong.Parse(d[1], NumberStyles.HexNumber);
+                    var city = d[0];
                     return new KeyValuePair<ulong, string>(id, city);
                 }).ToDictionary(x => x.Key, x => x.Value);
             }
@@ -206,7 +220,7 @@ namespace Ets2Map
             {
                 RoadLookup = File.ReadAllLines(LUTCSVFolder + "-roads.csv").Select(x =>
                 {
-                    var d = x.Split(",".ToCharArray());
+                    var d = x.Split(";".ToCharArray());
                     var id = uint.Parse(d[0], NumberStyles.HexNumber);
                     var look = d[1];
                     var lookObj = new Ets2RoadLook(look, this);

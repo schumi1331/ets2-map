@@ -14,6 +14,7 @@ namespace Ets2Map.Demo
             Express = Brushes.Yellow;
             Prefab = Brushes.Yellow;
             Local = Brushes.Orange;
+            NoVehicles = Brushes.Chocolate;
 
             HighwayGPS = Brushes.DarkRed;
             ExpressGPS = Brushes.GreenYellow;

@@ -14,20 +14,20 @@ namespace Ets2Map.Demo
 
         private Timer refresh;
 
-        private float mapScale = 1000.0f;
+        private float mapScale = 10000.0f;
 
         private Point? dragPoint;
-        private Ets2Point location = new Ets2Point(1000, 0, -1000, 0);
+        private Ets2Point location = new Ets2Point(0, 0, 0, 0);
 
         public Ets2MapDemo()
         {
-            var projectMap = @"C:\Projects\Software\ets2-map\";
+            var projectMap = @"D:\Projects\ets2-map\";
 
             map = new Ets2Mapper(
                 projectMap + @"SCS\europe\",
                 projectMap + @"SCS\prefab",
-                projectMap + @"SCS\LUT1.19",
-                projectMap + @"LUT\LUT1.19");
+                projectMap + @"SCS\LUT1.27",
+                projectMap + @"LUT\LUT1.27");
             map.Parse(true);
 
             render = new MapRenderer(map, new SimpleMapPalette());

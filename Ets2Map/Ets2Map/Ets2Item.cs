@@ -80,7 +80,7 @@ namespace Ets2Map
                         Valid = true;
 
                         var stamps = BitConverter.ToInt32(sector.Stream, offset + 433);
-                        BlockSize = 437 + stamps*24;
+                        BlockSize = 437 + stamps * 24;
                     }
                     else
                     {
@@ -89,7 +89,9 @@ namespace Ets2Map
                     break;
 
                 case Ets2ItemType.Prefab:
-                    nodeCount = BitConverter.ToInt32(sector.Stream, offset + 81);
+                    var extras = BitConverter.ToInt32(sector.Stream, offset + 0x51); // Additional Items (midlines, stoplines, etc)
+
+                    nodeCount = BitConverter.ToInt32(sector.Stream, offset + 0x55 + extras * 8);
                     HideUI = (sector.Stream[offset + 0x36] & 0x02) != 0;
 
                     if (nodeCount > 0x20)
@@ -97,21 +99,21 @@ namespace Ets2Map
                         Valid = false;
                         return;
                     }
-                    var unknownEntityOffset = offset + 85 + 8*nodeCount;
+                    var unknownEntityOffset = offset + 0x59 + 8 * nodeCount + 8 * extras;
                     if (unknownEntityOffset < 0 || unknownEntityOffset > sector.Stream.Length)
                     {
                         Valid = false;
                         return;
                     }
-                    var unknownEntity = BitConverter.ToInt32(sector.Stream,unknownEntityOffset);
+                    var unknownEntity = BitConverter.ToInt32(sector.Stream, unknownEntityOffset);
 
-                    if (unknownEntity < 0 || unknownEntity > 128)
+                    if (unknownEntity < 0 || unknownEntity > 192)
                     {
                         Valid = false;
                         return;
                     }
 
-                    var OriginOffset = offset + 0x61 + nodeCount*8 + unknownEntity*8;
+                    var OriginOffset = offset + 0x65 + nodeCount * 8 + unknownEntity * 8 + extras * 8;
                     if (OriginOffset < 0 || OriginOffset > sector.Stream.Length)
                     {
                         Valid = false;
@@ -120,7 +122,7 @@ namespace Ets2Map
                     Origin = sector.Stream[OriginOffset] & 0x03;
  
                     //Console.WriteLine("PREFAB @ " + uid.ToString("X16") + " origin: " + Origin);
-                    var prefabId = (int)BitConverter.ToUInt32(sector.Stream, offset + 57);
+                    var prefabId = (int)BitConverter.ToUInt32(sector.Stream, offset + 0x39);
 
                     // Invalidate unreasonable amount of node counts..
                     if (nodeCount < 0x20 && nodeCount != 0)
@@ -128,7 +130,7 @@ namespace Ets2Map
                         Valid = true;
                         for (int i = 0; i < nodeCount; i++)
                         {
-                            var nodeUid = BitConverter.ToUInt64(sector.Stream, offset + 81 + 4 + i*8);
+                            var nodeUid = BitConverter.ToUInt64(sector.Stream, offset + 0x55 + extras * 8 + 4 + i * 8);
                             //Console.WriteLine("prefab node link " + i + ": " + nodeUid.ToString("X16"));
                             // TODO: if node is in other sector..
                             if (AddNodeUID(nodeUid) == false)
@@ -158,7 +160,7 @@ namespace Ets2Map
                     // 2) The node of loading area
                     // 3) The node of job 
                     nodeCount = Sector.Nodes.Count(x => x.ForwardItemUID == uid) - 2;
-                    BlockSize = nodeCount*8 + 109;
+                    BlockSize = nodeCount * 8 + 109;
 
                     // Invalidate unreasonable amount of node counts..
                     if (nodeCount < 0x20)
@@ -179,7 +181,7 @@ namespace Ets2Map
                         {
                             for (int i = 0; i < nodeCount; i++)
                             {
-                                var nodeUid = BitConverter.ToUInt64(sector.Stream, offset + 113 + i*8);
+                                var nodeUid = BitConverter.ToUInt64(sector.Stream, offset + 113 + i * 8);
                                 //Console.WriteLine("company node link " + i + ": " + nodeUid.ToString("X16"));
                                 if (AddNodeUID(nodeUid) == false)
                                 {
@@ -325,14 +327,15 @@ namespace Ets2Map
                     break;
 
                     case Ets2ItemType.City:
-                    var CityID = BitConverter.ToUInt64(sector.Stream, offset + 57);
-                    var NodeID = BitConverter.ToUInt64(sector.Stream, offset + 73);
+                    var CityID = BitConverter.ToUInt64(sector.Stream, offset + 0x39);
+                    var NodeID = BitConverter.ToUInt64(sector.Stream, offset + 0x49);
                     
                     if ((CityID >> 56) != 0)
                     {
                         break;
                     }
                     City = Sector.Mapper.LookupCityID(CityID);
+                    HideUI = sector.Stream[offset + 0x34] != 0;
                     Valid = City != string.Empty && NodeID != 0 && sector.Mapper.Nodes.ContainsKey(NodeID);
                     if (!Valid)
                     {

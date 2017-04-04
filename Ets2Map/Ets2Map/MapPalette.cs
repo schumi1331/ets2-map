@@ -30,6 +30,11 @@ namespace Ets2Map
         public Brush Local;
 
         /// <summary>
+        /// No Vehicles roads
+        /// </summary>
+        public Brush NoVehicles;
+
+        /// <summary>
         /// Prefab roads (prefabs are crosspoints, etc.)
         /// </summary>
         public Brush Prefab;

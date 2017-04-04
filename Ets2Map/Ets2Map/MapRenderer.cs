@@ -110,11 +110,9 @@ namespace Ets2Map
                 // Nodes from prefab are always like:
                 // Prefab = Forward
                 // Road=backward
-                var road = node.ForwardItem != null && node.ForwardItem.Type == Ets2ItemType.Prefab
-                    ? node.BackwardItem
-                    : node.ForwardItem;
+                var road = node.ForwardItem?.Type == Ets2ItemType.Prefab ? node.BackwardItem : node.ForwardItem;
                 var roadStart = road;
-                var fw = node.ForwardItem != null && node.ForwardItem.Type == Ets2ItemType.Road;
+                var fw = node.ForwardItem?.Type == Ets2ItemType.Road;
 
                 if (road == null)
                 {
@@ -130,7 +128,7 @@ namespace Ets2Map
                     do
                     {
                         roadChain.Add(road);
-                        road = road.EndNode == null ? null : road.EndNode.ForwardItem;
+                        road = road.EndNode?.ForwardItem;
                     } while (road != null && road.Type == Ets2ItemType.Road);
                 }
                 else
@@ -138,7 +136,7 @@ namespace Ets2Map
                     do
                     {
                         roadChain.Add(road);
-                        road = road.StartNode == null ? null : road.StartNode.BackwardItem;
+                        road = road.StartNode?.BackwardItem;
                     } while (road != null && road.Type == Ets2ItemType.Road);
                 }
 
@@ -151,10 +149,11 @@ namespace Ets2Map
                 }
 
                 // Generate drawing parameters
-                var isHighway = roadStart != null && roadStart.RoadLook != null && roadStart.RoadLook.IsHighway;
-                var isExpress = roadStart != null && roadStart.RoadLook != null && roadStart.RoadLook.IsExpress;
-                var isLocal = roadStart != null && roadStart.RoadLook != null && roadStart.RoadLook.IsLocal;
-                var roadWidth = (roadStart.RoadLook != null ? roadStart.RoadLook.GetTotalWidth() : 10.0f) * scaleX;
+                var isHighway = roadStart?.RoadLook?.IsHighway == true;
+                var isExpress = roadStart?.RoadLook?.IsExpress == true;
+                var isLocal = roadStart?.RoadLook?.IsLocal == true;
+                var isNoVehicles = roadStart?.RoadLook?.IsNoVehicles == true;
+                var roadWidth = (roadStart?.RoadLook?.GetTotalWidth() ?? 10.0f) * scaleX;
                 var roadInGps = Route != null && !Route.Loading && Route.Roads != null && Route.Roads.Contains(roadStart);
 
                 var pen = default(Pen);
@@ -170,6 +169,10 @@ namespace Ets2Map
                 else if (isLocal)
                 {
                     pen = new Pen(roadInGps ? Palette.LocalGPS : Palette.Local, roadWidth);
+                }
+                else if (isNoVehicles)
+                {
+                    pen = new Pen(Palette.NoVehicles, roadWidth);
                 }
                 else
                 {
@@ -190,7 +193,7 @@ namespace Ets2Map
 
             // Cities?
             var cityFont = new Font("Arial", 10.0f);
-            foreach (var cities in itemsNearby.Where(x => x.Type == Ets2ItemType.City && x.StartNode != null))
+            foreach (var cities in itemsNearby.Where(x => x.Type == Ets2ItemType.City && x.StartNode != null && !x.HideUI))
             {
                 var ctX = cities.StartNode.X;
                 var ctZ = cities.StartNode.Z;
