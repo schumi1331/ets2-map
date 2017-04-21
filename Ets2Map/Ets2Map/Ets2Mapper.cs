@@ -17,10 +17,9 @@ namespace Ets2Map
         public string[] SectorFiles { get; private set; }
 
         public string PrefabFolder { get; private set; }
-        public string[] PrefabFiles { get; private set; }
 
-        public string LUTSIIFolder { get; private set; }
-        public string LUTCSVFolder { get; private set; }
+        public string LutSiiFolder { get; private set; }
+        public string LutJsonFolder { get; private set; }
 
         public List<Ets2Sector> Sectors { get; private set; }
 
@@ -36,23 +35,24 @@ namespace Ets2Map
         /*** VARIOUS LOOK UP TABLES (LUTs) TO FIND CERTAIN GAME ITEMS ***/ 
         internal List<Ets2Prefab> PrefabsLookup = new List<Ets2Prefab>();
         private List<Ets2Company> CompaniesLookup = new List<Ets2Company>();
-        private Dictionary<int, Ets2Prefab> PrefabLookup = new Dictionary<int, Ets2Prefab>();
-        private Dictionary<ulong, string> CitiesLookup = new Dictionary<ulong, string>();
-        private Dictionary<uint, Ets2RoadLook> RoadLookup = new Dictionary<uint, Ets2RoadLook>(); 
+        private List<Ets2RoadLook> RoadLookLookup = new List<Ets2RoadLook>();
 
-        public Ets2Mapper(string sectorFolder, string prefabFolder,string lutSii, string lutCsv)
+        private Dictionary<ulong, Ets2Prefab> PrefabLookup = new Dictionary<ulong, Ets2Prefab>();
+        private Dictionary<ulong, string> CitiesLookup = new Dictionary<ulong, string>();
+        private Dictionary<ulong, Ets2RoadLook> RoadLookup = new Dictionary<ulong, Ets2RoadLook>(); 
+
+        public Ets2Mapper(string sectorFolder, string prefabFolder,string lutSii, string lutJson)
         {
             SectorFolder = sectorFolder;
             PrefabFolder = prefabFolder;
 
             SectorFiles = Directory.GetFiles(sectorFolder, "*.base");
-            PrefabFiles = Directory.GetFiles(prefabFolder, "*.ppd", SearchOption.AllDirectories);
 
-            LUTSIIFolder = lutSii;
-            LUTCSVFolder = lutCsv;
+            LutSiiFolder = lutSii;
+            LutJsonFolder = lutJson;
         }
 
-        public  Ets2Item FindClosestRoadPrefab(Ets2Point location)
+        public Ets2Item FindClosestRoadPrefab(Ets2Point location)
         {
             // Find road or prefab closest by
             var closestPrefab =
@@ -105,127 +105,241 @@ namespace Ets2Map
             throw new NotImplementedException();
         }
 
-        private Dictionary<string, string> ParsePrefabSiiFile(string path)
+        private void ParseRoadLookFiles()
         {
-            if (!File.Exists(path))
+            var roadLookFiles = Directory.GetFiles(LutSiiFolder + @"road\", "*.sii");
+
+            roadLookFiles.ToList().ForEach(file =>
             {
-                return null;
-            }
-            var siiLines = File.ReadAllLines(path);
-            Dictionary<string, string> prefab2file = new Dictionary<string, string>();
-            var prefab = string.Empty;
-            var file = string.Empty;
-            foreach (var k in siiLines)
-            {
-                if (k.Trim() == "}")
+                string road = String.Empty;
+                var fileData = File.ReadLines(file);
+                Ets2RoadLook look = null;
+                foreach (var k in fileData)
                 {
-                    if (prefab != string.Empty && file != string.Empty)
+
+                    //value:
+                    if (k.Contains(":") && !road.Equals(String.Empty) && look != null)
                     {
-                        prefab2file.Add(prefab, file);
+                        var key = k;
+                        var data = key.Substring(key.IndexOf(':') + 1).Trim();
+                        key = key.Substring(0, key.IndexOf(':')).Trim();
+
+                        switch (key)
+                        {
+                            case "road_size_left":
+                                float.TryParse(data, out look.SizeLeft);
+                                break;
+
+                            case "road_size_right":
+                                float.TryParse(data, out look.SizeRight);
+                                break;
+
+                            case "shoulder_size_right":
+                                float.TryParse(data, out look.ShoulderLeft);
+                                break;
+
+                            case "shoulder_size_left":
+                                float.TryParse(data, out look.ShoulderRight);
+                                break;
+
+                            case "road_offset":
+                                float.TryParse(data, out look.Offset);
+                                break;
+                            case "lanes_left[]":
+                                look.LanesLeft++;
+                                look.IsLocal = (data.Equals("traffic_lane.road.local") || data.Equals("traffic_lane.road.local.tram"));
+                                look.IsExpress = (data.Equals("traffic_lane.road.expressway") || data.Equals("traffic_lane.road.divided"));
+                                look.IsHighway = (data.Equals("traffic_lane.road.motorway") || data.Equals("traffic_lane.road.motorway.low_density") ||
+                                                    data.Equals("traffic_lane.road.freeway") || data.Equals("traffic_lane.road.freeway.low_density") ||
+                                                    data.Equals("traffic_lane.road.divided"));
+                                look.IsNoVehicles = (data.Equals("traffic_lane.no_vehicles"));
+                                break;
+
+                            case "lanes_right[]":
+                                look.LanesRight++;
+                                look.IsLocal = (data.Equals("traffic_lane.road.local") || data.Equals("traffic_lane.road.local.tram"));
+                                look.IsExpress = (data.Equals("traffic_lane.road.expressway") || data.Equals("traffic_lane.road.divided"));
+                                look.IsHighway = (data.Equals("traffic_lane.road.motorway") || data.Equals("traffic_lane.road.motorway.low_density") ||
+                                                    data.Equals("traffic_lane.road.freeway") || data.Equals("traffic_lane.road.freeway.low_density") ||
+                                                    data.Equals("traffic_lane.road.divided"));
+                                look.IsNoVehicles = (data.Equals("traffic_lane.no_vehicles"));
+                                break;
+                        }
                     }
-
-                    prefab = string.Empty;
-                    file = string.Empty;
-                }
-
-                if (k.StartsWith("prefab_model"))
-                {
-                    var d = k.Split(":".ToCharArray()).Select(x => x.Trim()).ToArray();
-                    if (d[1].Length > 3)
+                    if (k.StartsWith("road_look"))
                     {
-                        prefab = d[1].Substring(0, d[1].Length - 1).Trim();
+                        var d = k.Split(':');
+                        d[1] = d[1].Trim();
+                        if (d[1].Length > 3)
+                        {
+                            road = d[1].Substring(0, d[1].Length - 1).Trim();
+                            look = new Ets2RoadLook(road);
+                        }
+                    }
+                    if (k.Trim() == "}")
+                    {
+                        if (look != null && !RoadLookLookup.Contains(look))
+                        {
+                            RoadLookLookup.Add(look);
+                        }
+                        road = String.Empty;
                     }
                 }
-
-                if (k.Contains("prefab_desc"))
-                {
-                    var d = k.Split("\"".ToCharArray());
-                    file = d[1].Trim();
-                }
-
-            }
-            return prefab2file;
+            });
         }
 
         private void LoadLUT()
         {
             // PREFABS
-            var prefabSii = LUTSIIFolder + "-prefab.sii";
-            var prefabNorthSii = LUTSIIFolder + "-prefab.dlc_north.sii";
-            var prefabFrSii = LUTSIIFolder + "-prefab.dlc_fr.sii";
-            var prefabCsv = LUTCSVFolder + "-prefab.csv";
-
-            if (File.Exists(prefabSii) && File.Exists(prefabCsv))
+            var prefabsJson = LutJsonFolder + "prefabs.json";
+            if (File.Exists(prefabsJson))
             {
-
-                Dictionary<string, string> prefab2file = new Dictionary<string, string>();
-                Dictionary<int, string> idx2prefab = new Dictionary<int, string>();
-                var csvLines = File.ReadAllLines(prefabCsv);
-                foreach (var k in csvLines)
+                var lines = File.ReadAllLines(prefabsJson);
+                string filePath = "";
+                ulong token = 0;
+                foreach (var line in lines)
                 {
-                    var d = k.Split(";".ToCharArray());
-                    int idx;
-
-                    if (int.TryParse(d[2], NumberStyles.HexNumber, null, out idx))
+                    if (line.Trim() == "]")
                     {
-                        if (idx2prefab.ContainsKey(idx) == false)
-                            idx2prefab.Add(idx, d[1]);
+                        break;
                     }
-                }
-
-                ParsePrefabSiiFile(prefabSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
-                ParsePrefabSiiFile(prefabNorthSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
-                ParsePrefabSiiFile(prefabFrSii)?.ToList().ForEach(x => prefab2file.Add(x.Key, x.Value));
-
-                // Link all prefabs
-                foreach (var id2fab in idx2prefab)
-                {
-                    if (prefab2file.ContainsKey(id2fab.Value))
+                    if (line.Contains(':'))
                     {
-                        var f = prefab2file[id2fab.Value];
-                        var obj = PrefabsLookup.FirstOrDefault(x => x.IsFile(f));
+                        string k = line.Split(':')[0].Split('"')[1];
+                        string v = line.Split(':')[1].Split('"')[1];
 
-                        if (obj != null)
+                        if (k == "token")
                         {
-                            obj.IDX = id2fab.Key;
-                            obj.IDSII = id2fab.Value;
-
-                            PrefabLookup.Add(id2fab.Key, obj);
+                            token = ulong.Parse(v, NumberStyles.HexNumber);
+                        }
+                        if (k == "prefab_desc")
+                        {
+                            filePath = v;
                         }
                     }
+
+                    if (line.Contains("}"))
+                    {
+                        if (token != 0 && filePath != "")
+                        {
+                            filePath = filePath.Substring(filePath.IndexOf('/', 1) + 1);
+                            PrefabLookup.Add(token, new Ets2Prefab(this, PrefabFolder + filePath));
+                        }
+
+                        filePath = "";
+                        token = 0;
+                    }
                 }
+
+            }
+            else
+            {
+                Console.WriteLine($"Cannot find file: {prefabsJson}");
             }
 
             // COMPANIES
-            if (File.Exists(LUTCSVFolder + "-companies.csv"))
+            var companiesJson = LutJsonFolder + "companies.json";
+            if (File.Exists(companiesJson))
             {
                 CompaniesLookup =
-                    File.ReadAllLines(LUTCSVFolder + "-companies.csv").Select(x => new Ets2Company(x, this)).ToList();
+                    File.ReadAllLines(companiesJson).Select(x => new Ets2Company(x, this)).ToList();
+            }
+            else
+            {
+                Console.WriteLine($"Cannot find file: {companiesJson}");
             }
 
             // CITIES
-            if (File.Exists(LUTCSVFolder + "-cities.csv"))
+            var citiesJson = LutJsonFolder + "cities.json";
+            if (File.Exists(citiesJson))
             {
-                CitiesLookup = File.ReadAllLines(LUTCSVFolder + "-cities.csv").Select(x =>
+                var lines = File.ReadAllLines(citiesJson);
+                string cityName = "";
+                ulong token = 0;
+                foreach (var line in lines)
                 {
-                    var d = x.Split(";".ToCharArray());
-                    var id = ulong.Parse(d[1], NumberStyles.HexNumber);
-                    var city = d[0];
-                    return new KeyValuePair<ulong, string>(id, city);
-                }).ToDictionary(x => x.Key, x => x.Value);
+                    if (line.Trim() == "]")
+                    {
+                        break;
+                    }
+                    if (line.Contains(':'))
+                    {
+                        string k = line.Split(':')[0].Split('"')[1];
+                        string v = line.Split(':')[1].Split('"')[1];
+
+                        if (k == "token")
+                        {
+                            token = ulong.Parse(v, NumberStyles.HexNumber);
+                        }
+                        if (k == "fullName")
+                        {
+                            cityName = v;
+                        }
+                    }
+                    if (line.Contains("}"))
+                    {
+                        if (token != 0 && cityName != "")
+                        {
+                            CitiesLookup.Add(token, cityName);
+                        }
+
+                        cityName = "";
+                        token = 0;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Cannot find file: {citiesJson}");
             }
 
             // ROAD LOOKS
-            if (File.Exists(LUTCSVFolder + "-roads.csv"))
+            var roadsJson = LutJsonFolder + "roads.json";
+            if (File.Exists(roadsJson))
             {
-                RoadLookup = File.ReadAllLines(LUTCSVFolder + "-roads.csv").Select(x =>
+                var lines = File.ReadAllLines(roadsJson);
+                string idName = "";
+                ulong token = 0;
+                foreach (var line in lines)
                 {
-                    var d = x.Split(";".ToCharArray());
-                    var id = uint.Parse(d[0], NumberStyles.HexNumber);
-                    var look = d[1];
-                    var lookObj = new Ets2RoadLook(look, this);
-                    return new KeyValuePair<uint, Ets2RoadLook>(id, lookObj);
-                }).ToDictionary(x => x.Key, x => x.Value);
+                    if (line.Trim() == "]")
+                    {
+                        break;
+                    }
+                    if (line.Contains(':'))
+                    {
+                        string k = line.Split(':')[0].Split('"')[1];
+                        string v = line.Split(':')[1].Split('"')[1];
+
+                        if (k == "token")
+                        {
+                            token = ulong.Parse(v, NumberStyles.HexNumber);
+                        }
+                        else if (k == "idName")
+                        {
+                            idName = v;
+                        }
+                    }
+
+                    if (line.Contains("}"))
+                    {
+                        if (token != 0 && idName != "")
+                        {
+                            var obj = RoadLookLookup.FirstOrDefault(x => x.LookID == idName);
+                            if (obj != null)
+                            {
+                                RoadLookup.Add(token, obj);
+                            }
+                        }
+
+                        idName = "";
+                        token = 0;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Cannot find file: {roadsJson}");
             }
         }
 
@@ -233,8 +347,7 @@ namespace Ets2Map
         {
             Loading = true;
 
-            // First load prefabs
-            PrefabsLookup = PrefabFiles.Select(x => new Ets2Prefab(this, x)).ToList();
+            ParseRoadLookFiles();
 
             // Load all LUTs
             LoadLUT();
@@ -407,7 +520,7 @@ namespace Ets2Map
             return !CitiesLookup.ContainsKey(id) ? string.Empty : CitiesLookup[id];
         }
 
-        public Ets2Prefab LookupPrefab(int prefabId)
+        public Ets2Prefab LookupPrefab(ulong prefabId)
         {
             if (PrefabLookup.ContainsKey(prefabId))
                 return PrefabLookup[prefabId];
@@ -415,7 +528,7 @@ namespace Ets2Map
                 return null;
         }
 
-        public Ets2RoadLook LookupRoadLookID(uint lookId)
+        public Ets2RoadLook LookupRoadLookID(ulong lookId)
         {
             if (RoadLookup.ContainsKey(lookId))
                 return RoadLookup[lookId];

@@ -65,7 +65,7 @@ namespace Ets2Map
                     StartNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 141);
                     EndNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 149);
 
-                    var lookId = BitConverter.ToUInt32(sector.Stream, offset + 61); // unique UINT32 ID with road look
+                    var lookId = BitConverter.ToUInt64(sector.Stream, offset + 61); // unique UINT32 ID with road look
                     RoadLook = Sector.Mapper.LookupRoadLookID(lookId);
 
                     // Need to create LUT to translate road_look.sii <> ID
@@ -122,7 +122,9 @@ namespace Ets2Map
                     Origin = sector.Stream[OriginOffset] & 0x03;
  
                     //Console.WriteLine("PREFAB @ " + uid.ToString("X16") + " origin: " + Origin);
-                    var prefabId = (int)BitConverter.ToUInt32(sector.Stream, offset + 0x39);
+                    var prefabId = BitConverter.ToUInt64(sector.Stream, offset + 0x39);
+
+                    if ((uid == 0x62F8ACF86730001 || uid == 0x62F8B1E73130000) && prefabId == 0x140AC71) HideUI = false; // prefabs are marked as hidden in editor, but have to be shown to draw Phoenix <-> Camp Verde road
 
                     // Invalidate unreasonable amount of node counts..
                     if (nodeCount < 0x20 && nodeCount != 0)
@@ -330,12 +332,8 @@ namespace Ets2Map
                     var CityID = BitConverter.ToUInt64(sector.Stream, offset + 0x39);
                     var NodeID = BitConverter.ToUInt64(sector.Stream, offset + 0x49);
                     
-                    if ((CityID >> 56) != 0)
-                    {
-                        break;
-                    }
                     City = Sector.Mapper.LookupCityID(CityID);
-                    HideUI = sector.Stream[offset + 0x34] != 0;
+                    HideUI = (sector.Stream[offset + 0x34] & 0x01) != 0;
                     Valid = City != string.Empty && NodeID != 0 && sector.Mapper.Nodes.ContainsKey(NodeID);
                     if (!Valid)
                     {

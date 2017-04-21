@@ -17,17 +17,17 @@ namespace Ets2Map.Demo
         private float mapScale = 10000.0f;
 
         private Point? dragPoint;
-        private Ets2Point location = new Ets2Point(0, 0, 0, 0);
+        private Ets2Point location = new Ets2Point(0, 0, 0, 0); // ats => -100000, 0, 17000
 
         public Ets2MapDemo()
         {
-            var projectMap = @"D:\Projects\ets2-map\";
+            var projectMap = @"D:\Projects\ets2-map\usa\";
 
             map = new Ets2Mapper(
-                projectMap + @"SCS\europe\",
-                projectMap + @"SCS\prefab",
-                projectMap + @"SCS\LUT1.27",
-                projectMap + @"LUT\LUT1.27");
+                projectMap + @"SCS\map\",
+                projectMap + @"SCS\prefab\",
+                projectMap + @"SCS\LUT\",
+                projectMap + @"LUT\");
             map.Parse(true);
 
             render = new MapRenderer(map, new SimpleMapPalette());
@@ -71,7 +71,7 @@ namespace Ets2Map.Demo
 
         private void Ets2MapDemo_MouseWheel(object sender, MouseEventArgs e)
         {
-            mapScale -= e.Delta;
+            mapScale -= e.Delta * 5;
             mapScale = Math.Max(100, Math.Min(30000, mapScale));
         }
 
