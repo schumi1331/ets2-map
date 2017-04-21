@@ -21,13 +21,15 @@ namespace Ets2Map.Demo
 
         public Ets2MapDemo()
         {
-            var projectMap = @"D:\Projects\ets2-map\usa\";
+            var projectFolder = @"D:\Projects\ets2-map\";
+
+            var mapFilesFolder = projectFolder + "europe"; // Change this to usa for ATS map
 
             map = new Ets2Mapper(
-                projectMap + @"SCS\map\",
-                projectMap + @"SCS\prefab\",
-                projectMap + @"SCS\LUT\",
-                projectMap + @"LUT\");
+                mapFilesFolder + @"\SCS\map\",
+                mapFilesFolder + @"\SCS\prefab\",
+                mapFilesFolder + @"\SCS\LUT\",
+                mapFilesFolder + @"\LUT\");
             map.Parse(true);
 
             render = new MapRenderer(map, new SimpleMapPalette());
