@@ -26,10 +26,10 @@ namespace Ets2Map.Demo {
             // Set location based on game
             switch (Game) {
                 case GAME.ETS2:
-                    new Ets2Point(0, 0, 0, 0);
+                    location = new Ets2Point(0, 0, 0, 0);
                     break;
                 case GAME.ATS:
-                    new Ets2Point(-100000, 0, 17000, 0);
+                    location = new Ets2Point(-100000, 0, 17000, 0);
                     break;
             }
 
@@ -40,7 +40,7 @@ namespace Ets2Map.Demo {
             }
 
             // Load game specific folder
-            var mapFilesFolder = projectFolder + (Game == GAME.ETS2 ? "europe" : "usa");
+            var mapFilesFolder = projectFolder + "\\" + (Game == GAME.ETS2 ? "europe" : "usa");
 
             map = new Ets2Mapper(
                 mapFilesFolder + @"\SCS\map\",
