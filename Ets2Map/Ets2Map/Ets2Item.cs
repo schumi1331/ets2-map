@@ -62,8 +62,8 @@ namespace Ets2Map
             switch (Type)
             {
                 case Ets2ItemType.Road:
-                    StartNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 141);
-                    EndNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 149);
+                    StartNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 149);
+                    EndNodeUID = BitConverter.ToUInt64(sector.Stream, offset + 157);
 
                     var lookId = BitConverter.ToUInt64(sector.Stream, offset + 61); // unique UINT32 ID with road look
                     RoadLook = Sector.Mapper.LookupRoadLookID(lookId);

@@ -197,3 +197,5 @@ $RECYCLE.BIN/
 
 ## Let's not export copyrighted SCS material:
 **/SCS/*
+/.vs
+/Ets2Map/.vs
